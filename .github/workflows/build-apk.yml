@@ -4,56 +4,56 @@ on:
   push:
     branches:
       - main
+  workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-latest
- 
+
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v3
 
-    - name: Set up Python
-      uses: actions/setup-python@v5
-      with:
-        python-version: '3.10'
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.10"
 
-    - name: Install system dependencies
-      run: |
-        sudo apt update
-        sudo apt install -y zip unzip openjdk-17-jdk python3-pip libncurses6 build-essential ccache git
-        pip install --upgrade pip
-        pip install buildozer cython
+      - name: Install dependencies
+        run: |
+          sudo apt update
+          sudo apt install -y build-essential ccache git zip unzip openjdk-17-jdk python3-pip libncurses5 coreutils
+          pip install --upgrade pip
+          pip install buildozer cython
 
-    - name: Download Android SDK Command-line Tools
-      run: |
-        mkdir -p $HOME/android-sdk/cmdline-tools
-        cd $HOME/android-sdk/cmdline-tools
-        wget https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip -O cmdline-tools.zip
-        unzip cmdline-tools.zip
-        mv cmdline-tools latest
-      shell: bash
+      - name: Set up Android SDK
+        run: |
+          mkdir -p $HOME/android-sdk/cmdline-tools
+          curl -o sdk-tools.zip https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip
+          unzip sdk-tools.zip -d $HOME/android-sdk/cmdline-tools
+          mv $HOME/android-sdk/cmdline-tools/cmdline-tools $HOME/android-sdk/cmdline-tools/latest
+          yes | $HOME/android-sdk/cmdline-tools/latest/bin/sdkmanager --licenses
+        env:
+          JAVA_HOME: /usr/lib/jvm/java-17-openjdk-amd64
 
-    - name: Set environment variables
-      run: echo "ANDROID_HOME=$HOME/android-sdk" >> $GITHUB_ENV
+      - name: Configure buildozer.spec
+        run: |
+          if ! grep -q '^version' buildozer.spec; then
+            echo "version = 0.1" >> buildozer.spec
+          fi
+          if grep -q '^android.arch =' buildozer.spec; then
+            sed -i 's/^android.arch =.*/# android.arch removed/' buildozer.spec
+            echo "android.archs = armeabi-v7a" >> buildozer.spec
+          fi
 
-    - name: Accept licenses and install SDK packages
-      run: |
-        yes | $HOME/android-sdk/cmdline-tools/latest/bin/sdkmanager --licenses
-        $HOME/android-sdk/cmdline-tools/latest/bin/sdkmanager "platform-tools" "platforms;android-31" "build-tools;33.0.2"
-      env:
-        JAVA_HOME: /usr/lib/jvm/java-17-openjdk-amd64
-        ANDROID_HOME: $HOME/android-sdk
-        PATH: $HOME/android-sdk/cmdline-tools/latest/bin:$PATH
+      - name: Initialize Buildozer
+        run: buildozer android clean
 
-    - name: Build APK with Buildozer
-      run: buildozer android debug
-      env:
-        ANDROID_HOME: $HOME/android-sdk
-        PATH: $HOME/android-sdk/cmdline-tools/latest/bin:$PATH
+      - name: Build APK
+        run: buildozer android debug
 
-    - name: Upload APK
-      uses: actions/upload-artifact@v4
-      with:
-        name: kivy-app-apk
-        path: bin/*.apk
+      - name: Upload APK
+        uses: actions/upload-artifact@v3
+        with:
+          name: kivy-apk
+          path: bin/*.apk
