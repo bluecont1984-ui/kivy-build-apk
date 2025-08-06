@@ -25,10 +25,16 @@ jobs:
         pip install --upgrade pip
         pip install buildozer cython
 
-    - name: Generate buildozer.spec if missing
-      run: test -f buildozer.spec || buildozer init
-
-    - name: Accept Android SDK licenses & install tools
+    - name: Set up Android SDK
       run: |
-        yes | sdkmanager --licenses
-        sdkmanager "p
+        mkdir -p $HOME/android-sdk/cmdline-tools
+        cd $HOME/android-sdk/cmdline-tools
+        curl -o sdk.zip https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip
+        unzip sdk.zip
+        rm sdk.zip
+        mv cmdline-tools latest
+      shell: bash
+
+    - name: Accept licenses and install SDK components
+      run: |
+        yes | $HOME/android-sdk
