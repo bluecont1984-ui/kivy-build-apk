@@ -25,19 +25,10 @@ jobs:
         pip install --upgrade pip
         pip install buildozer cython
 
-    - name: Initialize Buildozer (generate .buildozer folder)
-      run: buildozer android clean
+    - name: Generate buildozer.spec if missing
+      run: test -f buildozer.spec || buildozer init
 
-    - name: Accept Android SDK licenses
-      run: yes | sdkmanager --licenses || true
-      env:
-        ANDROID_HOME: $HOME/.buildozer/android/platform/android-sdk
-
-    - name: Build APK
-      run: buildozer android debug
-
-    - name: Upload APK
-      uses: actions/upload-artifact@v4
-      with:
-        name: kivy-app-apk
-        path: bin/*.apk
+    - name: Accept Android SDK licenses & install tools
+      run: |
+        yes | sdkmanager --licenses
+        sdkmanager "p
